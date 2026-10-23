@@ -1,1 +1,2 @@
-# Game-Resp uses Python standard-library Tkinter; no pip dependencies required.
+# Windows toast notifications for installed Steam game updates
+winotify>=1.1.0
