@@ -21,29 +21,6 @@
 - Windows 10 or Windows 11
 - Python 3.10+ for running from source (Tkinter is included in standard Windows Python installers)
 
-## Run from source
-
-1. Install Python from [python.org](https://www.python.org/downloads/windows/). During setup, enable **Add Python to PATH**.
-2. Download or clone this repository.
-3. Open PowerShell in the project directory and run:
-
-```powershell
-python app.py
-```
-
-No third-party Python packages are required.
-
-## Build a Windows executable
-
-Install PyInstaller and run:
-
-```powershell
-python -m pip install pyinstaller
-python -m PyInstaller --noconfirm --clean --windowed --name Game-Resp app.py
-```
-
-The executable will be at `dist\Game-Resp\Game-Resp.exe`. To make a single-file executable instead, add `--onefile` to the command (first launch may take longer).
-
 ## Steam scanning notes
 
 Game-Resp looks for Steam installation folders and reads `steamapps\libraryfolders.vdf` and `appmanifest_*.acf` files. It does not modify Steam files. A game entry can be detected from its manifest even if its installation directory is missing; the status will reflect that. Steam game launching uses `steam://run/APPID`, which requires Steam to be installed.
@@ -53,14 +30,6 @@ Game-Resp looks for Steam installation folders and reads `steamapps\libraryfolde
 `%APPDATA%\Game-Resp\library.json`
 
 Use **Export library** before moving to another PC or trying an early build. Import merges games without overwriting matching IDs.
-
-## Public release checklist
-
-1. Create a **public** GitHub repository named `Game-Resp`.
-2. Upload/commit the contents of this folder.
-3. Open **Actions** and let the Windows build workflow complete.
-4. Create a GitHub Release tagged `v0.1.0` (or publish a version after testing). Attach a packaged Windows build from the workflow artifacts, or build locally using the command above.
-5. Add screenshots and tested Windows version to the release notes.
 
 ## Roadmap ideas
 
@@ -75,7 +44,3 @@ Use **Export library** before moving to another PC or trying an early build. Imp
 ## Privacy and safety
 
 Game-Resp launches executables only when you click Play. Review executable paths before launching games. The app does not download game files or bypass DRM. Steam support is a local library scanner/launcher, not a replacement for Steam.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
