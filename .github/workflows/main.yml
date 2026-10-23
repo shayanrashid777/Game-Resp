@@ -1,0 +1,32 @@
+
+name: Build Game-Resp for Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: python -m pip install pyinstaller
+
+      - name: Build Game-Resp executable
+        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name Game-Resp app.py
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game-Resp-Windows
+          path: dist/Game-Resp.exe
