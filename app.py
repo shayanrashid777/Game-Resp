@@ -2,7 +2,7 @@ from __future__ import annotations
 import json, os, re, subprocess, sys, threading, time
 from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import ttk, filedialog, messagebox, simpledialog, colorchooser
 
 APP_NAME = "Game-Resp"
 APP_DIR = Path(os.getenv("APPDATA", str(Path.home()))) / APP_NAME
@@ -16,6 +16,7 @@ MUTED = "#9ba7bd"
 ACCENT = "#7c5cff"
 GREEN = "#43d9a3"
 RED = "#ff6b7a"
+UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000  # check Steam manifests every 5 minutes
 
 def load_data():
     APP_DIR.mkdir(parents=True, exist_ok=True)
@@ -95,6 +96,7 @@ def scan_steam_games():
                 appid = parse_vdf_string(raw, "appid")
                 name = parse_vdf_string(raw, "name")
                 installdir = parse_vdf_string(raw, "installdir")
+                buildid = parse_vdf_string(raw, "buildid") or ""
                 if not name or not installdir:
                     continue
                 install = steamapps / "common" / installdir
@@ -103,7 +105,7 @@ def scan_steam_games():
                     continue
                 seen.add(key)
                 found.append({
-                    "id": key, "name": name, "path": str(install),
+                    "id": key, "name": name, "path": str(install), "build_id": buildid,
                     "source": "Steam", "appid": appid or "", "favorite": False,
                     "status": "Installed" if install.exists() else "Missing",
                     "tags": [], "notes": "", "added": int(time.time())
@@ -118,9 +120,11 @@ class GameResp(tk.Tk):
         self.title("Game-Resp | Your game universe")
         self.geometry("1180x760")
         self.minsize(900, 600)
-        self.configure(bg=BG)
         self.data = load_data()
+        self.background_color = self.data.get("background_color", BG)
+        self.configure(bg=self.background_color)
         self.games = self.data.setdefault("games", [])
+        self._last_update_check = 0
         self.filter_var = tk.StringVar()
         self.source_var = tk.StringVar(value="All games")
         self.sort_var = tk.StringVar(value="Recently added")
@@ -128,6 +132,7 @@ class GameResp(tk.Tk):
         self._setup_style()
         self._build_ui()
         self.render_games()
+        self.after(UPDATE_CHECK_INTERVAL_MS, self.check_steam_updates)
 
     def _setup_style(self):
         style = ttk.Style(self)
@@ -163,6 +168,7 @@ class GameResp(tk.Tk):
         self._button(actions, "↻ Scan Steam", self.scan_steam).pack(side="left", padx=4)
         self._button(actions, "+ Add game", self.add_game, True).pack(side="left", padx=4)
         self._button(actions, "Import", self.import_library).pack(side="left", padx=4)
+        self._button(actions, "Background", self.change_background).pack(side="left", padx=4)
 
         stats = tk.Frame(self, bg=BG, padx=22)
         stats.pack(fill="x", pady=(0, 14))
@@ -263,8 +269,77 @@ class GameResp(tk.Tk):
 
     def persist(self):
         self.data["games"] = self.games
+        self.data["background_color"] = self.background_color
         save_data(self.data)
         self.render_games()
+
+    def change_background(self):
+        """Choose and persist a custom app background color."""
+        chosen = colorchooser.askcolor(color=self.background_color, title="Choose Game-Resp background")
+        if not chosen or not chosen[1]:
+            return
+        old_color = self.background_color
+        self.background_color = chosen[1]
+        self.data["background_color"] = self.background_color
+        # Update widgets using the main background color without changing panel/card colors.
+        def recolor(widget):
+            try:
+                if widget.cget("bg").lower() == old_color.lower():
+                    widget.configure(bg=self.background_color)
+            except (tk.TclError, AttributeError):
+                pass
+            for child in widget.winfo_children():
+                recolor(child)
+        recolor(self)
+        self.configure(bg=self.background_color)
+        self.persist()
+        self.status_var.set("Background color saved")
+
+    def notify_steam_update(self, game_name):
+        """Send a Windows toast when available; otherwise show an in-app notice."""
+        title = "Steam game updated"
+        message = f"{game_name} has a new installed build."
+        try:
+            from winotify import Notification
+            Notification(app_id="Game-Resp", title=title, msg=message).show()
+        except Exception:
+            # Keep the app functional if Windows notifications aren't available.
+            self.after(0, lambda: messagebox.showinfo(title, message, parent=self))
+
+    def check_steam_updates(self):
+        """Compare installed Steam manifest build IDs; non-Steam games are ignored."""
+        try:
+            current = scan_steam_games()
+            by_appid = {str(g.get("appid")): g for g in current if g.get("appid")}
+            changed = []
+            for game in self.games:
+                if game.get("source") != "Steam" or not game.get("appid"):
+                    continue
+                latest = by_appid.get(str(game.get("appid")))
+                if not latest:
+                    continue
+                new_build = str(latest.get("build_id", ""))
+                old_build = str(game.get("build_id", ""))
+                # Establish a baseline for older library entries; don't alert on first scan.
+                if new_build and not old_build:
+                    game["build_id"] = new_build
+                elif new_build and old_build and new_build != old_build:
+                    game["build_id"] = new_build
+                    changed.append(game.get("name", "A Steam game"))
+            if changed:
+                self.persist()
+                for name in changed:
+                    self.notify_steam_update(name)
+                self.status_var.set(f"Steam update detected for {len(changed)} game(s)")
+            else:
+                # Save newly established build ID baselines without noisy notifications.
+                self.data["games"] = self.games
+                self.data["background_color"] = self.background_color
+                save_data(self.data)
+        except Exception as exc:
+            self.status_var.set("Steam update check unavailable")
+        finally:
+            self.after(UPDATE_CHECK_INTERVAL_MS, self.check_steam_updates)
 
     def scan_steam(self):
         self.status_var.set("Scanning Steam libraries…")
