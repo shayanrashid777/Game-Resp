@@ -56,27 +56,7 @@ Game-Resp looks for Steam installation folders and reads `steamapps\libraryfolde
 
 Use **Export library** before moving to another PC or trying an early build. Import merges games without overwriting matching IDs.
 
-## Public release checklist
-
-1. Create a **public** GitHub repository named `Game-Resp`.
-2. Upload/commit the contents of this folder.
-3. Open **Actions** and let the Windows build workflow complete.
-4. Create a GitHub Release tagged `v0.1.0` (or publish a version after testing). Attach a packaged Windows build from the workflow artifacts, or build locally using the command above.
-5. Add screenshots and tested Windows version to the release notes.
-
-## Roadmap ideas
-
-- Cover art and customizable grid/card view
-- Playtime tracking and session history
-- Controller-friendly navigation
-- Optional metadata providers and manual cover art
-- Steam Grid DB integration (requires user-supplied API key / terms review)
-- Per-game launch arguments and working directory
-- GOG, Epic, Xbox app and other launcher integrations
-
-## Privacy and safety
-
-Game-Resp launches executables only when you click Play. Review executable paths before launching games. The app does not download game files or bypass DRM. Steam support is a local library scanner/launcher, not a replacement for Steam.
+#
 
 ## License
 
